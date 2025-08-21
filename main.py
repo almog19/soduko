@@ -1,14 +1,17 @@
-#uvicorn main:app --reload
-#import tensorflow as tf
-#import cv2
-#import numpy as np
+#venv\Scripts\activate.bat
+#uvicorn main:app --reload/ python -m uvicorn main:app --reload
+
+
+import tensorflow as tf # pip install tensorflow
+import cv2 #pip install opencv-python
+import numpy as np #pip install numpy
 from fastapi import FastAPI, File, UploadFile
 
 app = FastAPI()
-"""
+
 class Sudoku_board:
   def __init__(self) -> None:
-      self.model = tf.keras.models.load_model('/content/drive/MyDrive/synthetic_sudoku/model_underfit_3.keras')
+      self.model = tf.keras.models.load_model('C:/Users/almog/Downloads/model_underfit_3.keras')
 
   def label_board(self, img_path: str):
       img, thresh = self.preprocess_image(img_path)
@@ -16,6 +19,7 @@ class Sudoku_board:
       corners = self.get_approx_corners(contour)
       if corners is None:
         raise ValueError("could not find sudoku board")
+      print("found sudoku board")
       self.wraped_sudoku = self.warp_perspective(img,corners)
       #plt.imshow(self.wraped_sudoku)
       #plt.show()
@@ -27,6 +31,7 @@ class Sudoku_board:
             #    plt.subplot(1, 9, j + 1)
             #    plt.imshow(cells[i*9+j], cmap='gray')
                   digit,conf = self.predict_digit(cells[i*9+j])
+                  self.arr[i*9+j] = digit
             #    plt.title(f"{digit}\n{conf:.3f}")
             #    plt.axis('off')
             #plt.tight_layout()
@@ -42,8 +47,8 @@ class Sudoku_board:
               cells.append(cell)
       return cells
 
-  def preprocess_image(self,img_path):
-      img = cv2.imread(img_path)
+  def preprocess_image(self,img):
+      #img = cv2.imread(img_path)
       gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
       blur = cv2.GaussianBlur(gray, (7, 7), 0)
       thresh = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
@@ -96,8 +101,28 @@ class Sudoku_board:
       predicted_class = np.argmax(preds)
       confidence = np.max(preds)
       return predicted_class, confidence
-"""
+board = Sudoku_board()
+
+@app.get("/")
+def read_root():
+    return {"message": "Hello from FastAPI"}
+
+#curl -X POST "http://127.0.0.1:8000/predict" -F "file=@C:/Users/almog/Downloads/CAVEMAN.png"
+
 @app.post("/predict")
 async def upload_file(file: UploadFile = File(...)):
     contents = await file.read()
-    return {"filename": file.filename, "size": len(contents)}
+
+    nparr = np.frombuffer(contents, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if img is None:
+        return {"error": "Could not decode image"}
+
+    h, w, c = img.shape
+    arr_board = board.label_board(img)
+    for i in range(9):
+        print("[", end='')
+        for j in range(9):
+            print(arr_board[i*9+j], end=', ')
+        print("]")
+    return {"filename": file.filename, "shape": [h, w, c], "board": arr_board}
