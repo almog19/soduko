@@ -1,13 +1,41 @@
 #venv\Scripts\activate.bat
-#uvicorn main:app --reload/ python -m uvicorn main:app --reload
+#loop back:
+# uvicorn main:app --reload/ python -m uvicorn main:app --reload
 
+#pc IP:
+#uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 import tensorflow as tf # pip install tensorflow
 import cv2 #pip install opencv-python
 import numpy as np #pip install numpy
 from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+import socket
 
 app = FastAPI()
+
+#CORS - cross origin resource sharing
+#2 origins(servers)
+#react dev - localhost(:3000)
+#fastAPI backend - loopback(:8000)
+#without CORS - block request from one origin for security
+
+local_ip = socket.gethostbyname(socket.gethostname())
+print("local_ip", local_ip)
+
+origins = [
+    "http://localhost:3000",       # if testing with a local web frontend
+    f"http://{local_ip}:19006",  # Expo web dev (LAN)
+    f"http://{local_ip}:8081",   # if Metro bundler
+    "*",
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # or ["http://localhost:3000"] for safety
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class Sudoku_board:
   def __init__(self) -> None:
@@ -126,3 +154,7 @@ async def upload_file(file: UploadFile = File(...)):
             print(arr_board[i*9+j], end=', ')
         print("]")
     return {"filename": file.filename, "shape": [h, w, c], "board": arr_board}
+
+@app.post("/hello")
+def hello():
+    return {"message:" "hello world"}
