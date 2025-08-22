@@ -1,6 +1,6 @@
+
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
-
 export default function SudokuGrid() {
   const [board, setBoard] = useState(
     Array(9).fill(null).map(() => Array(9).fill(0))
