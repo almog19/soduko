@@ -1,3 +1,4 @@
+
 #venv\Scripts\activate.bat
 #loop back:
 # uvicorn main:app --reload/ python -m uvicorn main:app --reload
@@ -5,9 +6,9 @@
 #pc IP:
 #uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-import tensorflow as tf # pip install tensorflow
-import cv2 #pip install opencv-python
-import numpy as np #pip install numpy
+#import tensorflow as tf # pip install tensorflow
+#import cv2 #pip install opencv-python
+#import numpy as np #pip install numpy
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import socket
@@ -24,10 +25,11 @@ local_ip = socket.gethostbyname(socket.gethostname())
 print("local_ip", local_ip)
 
 origins = [
-    "http://localhost:3000",       # if testing with a local web frontend
-    f"http://{local_ip}:19006",  # Expo web dev (LAN)
-    f"http://{local_ip}:8081",   # if Metro bundler
-    "*",
+    f"http://{local_ip}:19006",   # Expo web default
+    "http://127.0.0.1:19006",   # Alternative Expo web
+    f"http://{local_ip}:3000",    # React web dev
+    "http://127.0.0.1:3000",    # React web dev
+    "*"                         # Mobile apps (requests not CORS-checked)
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -36,7 +38,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+"""
 class Sudoku_board:
   def __init__(self) -> None:
       self.model = tf.keras.models.load_model('C:/Users/almog/Downloads/model_underfit_3.keras')
@@ -130,13 +132,13 @@ class Sudoku_board:
       confidence = np.max(preds)
       return predicted_class, confidence
 board = Sudoku_board()
-
+"""
 @app.get("/")
 def read_root():
     return {"message": "Hello from FastAPI"}
 
 #curl -X POST "http://127.0.0.1:8000/predict" -F "file=@C:/Users/almog/Downloads/CAVEMAN.png"
-
+"""
 @app.post("/predict")
 async def upload_file(file: UploadFile = File(...)):
     contents = await file.read()
@@ -154,7 +156,10 @@ async def upload_file(file: UploadFile = File(...)):
             print(arr_board[i*9+j], end=', ')
         print("]")
     return {"filename": file.filename, "shape": [h, w, c], "board": arr_board}
-
+"""
 @app.post("/hello")
 def hello():
-    return {"message:" "hello world"}
+    arr = [[0]*9 for _ in range(9)]
+    arr[1][2]=3
+    print(arr)
+    return {"message" : "hello world", "arr": arr}
