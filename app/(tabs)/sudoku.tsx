@@ -1,8 +1,9 @@
+
 import React, { useState } from "react";
 import { View, Text,  TextInput, TouchableOpacity, Image, StyleSheet, Button,} from "react-native";
 import * as ImagePicker from "expo-image-picker";
 
-const API_URL = "http://192.168.1.101:8000";
+const API_URL = "http://192.168.1.155:8000";
 
 // Types
 type CellChangeAction = {
@@ -81,6 +82,15 @@ export default function SudokuGrid() {
       return prev.slice(0, -1);
     });
   };
+  function base64ToBlob(base64: string, type = "image/png"){
+    const byteCharacter = atob(base64);
+    const byteNumbers = new Array(byteCharacter.length);
+    for(let i = 0; i < byteCharacter.length; i++){
+      byteNumbers[i] = byteCharacter.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type });
+  }
 
   const image = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -93,22 +103,39 @@ export default function SudokuGrid() {
     } else {
       alert("You did not select any image");
     }
-
-    const new_url = API_URL + "/hello";
+    if(!imageUri){
+      return { error: "no image selected"};
+    }
+    const new_url = API_URL + "/predict";
     console.log(new_url);
+
+    console.log("image URI:", imageUri);
+    //const base64Data = imageUri.split(",")[1];//remove("image/png;base64,")
+    //const blob = base64ToBlob(base64Data, "image/png")
+    
+    console.log("blob", imageUri);
+    const formImage = new FormData();
+    formImage.append("file", {
+      uri: imageUri,
+      name: "upload.png",
+      type: "image/png",
+    } as any);
     try {
-      const response = await fetch(new_url, { method: "POST" });
+      const response = await fetch(new_url, { 
+        method: "POST",
+        body: formImage,
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Request failed: ${response.status} - ${errorText}`);
       }
       const data = await response.json();
-      console.log(data.arr);
+      console.log(data.board_list);
       setBoard((prev) => {
         const prevBoard = prev.map((r) => [...r]);
         setHistory((h) => [...h, { type: "image", prevBoard }]);
-        return data.arr;
+        return data.board_list;
       });
       console.log("board:", board);
 
