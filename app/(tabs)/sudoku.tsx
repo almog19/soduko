@@ -1,165 +1,259 @@
+import React, { useState } from "react";
+import { View, Text,  TextInput, TouchableOpacity, Image, StyleSheet, Button,} from "react-native";
+import * as ImagePicker from "expo-image-picker";
 
-#venv\Scripts\activate.bat
-#loop back:
-# uvicorn main:app --reload/ python -m uvicorn main:app --reload
+const API_URL = "http://192.168.1.101:8000";
 
-#pc IP:
-#uvicorn main:app --reload --host 0.0.0.0 --port 8000
+// Types
+type CellChangeAction = {
+  type: "cell";
+  row: number;
+  col: number;
+  prev: number;
+  next: number;
+};
 
-#import tensorflow as tf # pip install tensorflow
-#import cv2 #pip install opencv-python
-#import numpy as np #pip install numpy
-from fastapi import FastAPI, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-import socket
+type ClearAction = {
+  type: "clear";
+  prevBoard: number[][];
+};
 
-app = FastAPI()
+type ImageAction = {
+  type: "image";
+  prevBoard: number[][];
+};
 
-#CORS - cross origin resource sharing
-#2 origins(servers)
-#react dev - localhost(:3000)
-#fastAPI backend - loopback(:8000)
-#without CORS - block request from one origin for security
+type Action = CellChangeAction | ClearAction | ImageAction;
 
-local_ip = socket.gethostbyname(socket.gethostname())
-print("local_ip", local_ip)
+type ActiveCell = { row: number; col: number } | null;
 
-origins = [
-    f"http://{local_ip}:19006",   # Expo web default
-    "http://127.0.0.1:19006",   # Alternative Expo web
-    f"http://{local_ip}:3000",    # React web dev
-    "http://127.0.0.1:3000",    # React web dev
-    "*"                         # Mobile apps (requests not CORS-checked)
-]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,  # or ["http://localhost:3000"] for safety
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-"""
-class Sudoku_board:
-  def __init__(self) -> None:
-      self.model = tf.keras.models.load_model('C:/Users/almog/Downloads/model_underfit_3.keras')
+export default function SudokuGrid() {
+  const [board, setBoard] = useState<number[][]>(
+    Array(9)
+      .fill(null)
+      .map(() => Array(9).fill(0))
+  );
 
-  def label_board(self, img_path: str):
-      img, thresh = self.preprocess_image(img_path)
-      contour = self.find_largest_contour(thresh)
-      corners = self.get_approx_corners(contour)
-      if corners is None:
-        raise ValueError("could not find sudoku board")
-      print("found sudoku board")
-      self.wraped_sudoku = self.warp_perspective(img,corners)
-      #plt.imshow(self.wraped_sudoku)
-      #plt.show()
-      cells = self.split_cells(self.wraped_sudoku)
-      self.arr = [0] * 81
-      for i in range(9):
-            #plt.figure(figsize=(8, 2))
-            for j in range(9):
-            #    plt.subplot(1, 9, j + 1)
-            #    plt.imshow(cells[i*9+j], cmap='gray')
-                  digit,conf = self.predict_digit(cells[i*9+j])
-                  self.arr[i*9+j] = digit
-            #    plt.title(f"{digit}\n{conf:.3f}")
-            #    plt.axis('off')
-            #plt.tight_layout()
-            #plt.show()
-      return self.arr
+  const [activeCell, setActiveCell] = useState<ActiveCell>(null);
+  const [history, setHistory] = useState<Action[]>([]);
+  const [imageUri, setImageUri] = useState<string | null>(null);
 
-  def split_cells(self, board_img, size=640):
-      cells = []
-      step = size // 9
-      for y in range(9):
-          for x in range(9):
-              cell = board_img[y*step:(y+1)*step, x*step:(x+1)*step]
-              cells.append(cell)
-      return cells
+  const handleChange = (text: string, rowIndex: number, colIndex: number) => {
+    let value = parseInt(text, 10);
 
-  def preprocess_image(self,img):
-      #img = cv2.imread(img_path)
-      gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-      blur = cv2.GaussianBlur(gray, (7, 7), 0)
-      thresh = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                    cv2.THRESH_BINARY_INV, 11, 2)
-      return img, thresh
+    if (isNaN(value) || value < 1 || value > 9) {
+      value = 0;
+    }
 
-  def find_largest_contour(self,thresh_img):
-      contours, _ = cv2.findContours(thresh_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-      largest = max(contours, key=cv2.contourArea)
-      return largest
+    setBoard((prev) => {
+      const newBoard = prev.map((r) => [...r]);
+      const prevVal = newBoard[rowIndex][colIndex];
 
-  def get_approx_corners(self,contour):
-      epsilon = 0.02 * cv2.arcLength(contour, True)
-      approx = cv2.approxPolyDP(contour, epsilon, True)
-      if len(approx) == 4:
-          return np.float32([pt[0] for pt in approx])
-      return None
+      if (prevVal !== value) {
+        setHistory((h) => [
+          ...h,
+          { type: "cell", row: rowIndex, col: colIndex, prev: prevVal, next: value },
+        ]);
+      }
 
-  def order_points(self,pts):
-      # Order corners: [top-left, top-right, bottom-right, bottom-left]
-      s = pts.sum(axis=1)
-      diff = np.diff(pts, axis=1)
-      return np.array([
-          pts[np.argmin(s)],
-          pts[np.argmin(diff)],
-          pts[np.argmax(s)],
-          pts[np.argmax(diff)]
-      ], dtype='float32')
+      newBoard[rowIndex][colIndex] = value;
+      return newBoard;
+    });
+  };
 
-  def warp_perspective(self,orig_img, corners, size=640):
-      ordered = self.order_points(corners)
-      target = np.array([[0, 0], [size-1, 0], [size-1, size-1], [0, size-1]], dtype='float32')
-      matrix = cv2.getPerspectiveTransform(ordered, target)
-      return cv2.warpPerspective(orig_img, matrix, (size, size))
+  const undo = () => {
+    setHistory((prev) => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
 
-  def is_blank(self,cell, threshold=10):
-      std_dev = np.std(cell)
-      return std_dev < threshold
+      setBoard((b) => {
+        const newBoard = b.map((r) => [...r]);
 
-  def preprocess_cell(self,cell):
-      cell = cv2.cvtColor(cell, cv2.COLOR_BGR2RGB)
-      cell = cv2.resize(cell, (64, 64))                      # Resize to match input shape
-      cell = cell.astype(np.float32) / 255.0
-      cell = np.expand_dims(cell, axis=0)                    # Add batch dimension
-      return cell
+        if (last.type === "cell") {
+          newBoard[last.row][last.col] = last.prev;
+        } else if (last.type === "clear" || last.type === "image") {
+          return last.prevBoard;
+        } 
 
-  def predict_digit(self,cell):
-      img = self.preprocess_cell(cell)
-      preds = self.model.predict(img,verbose=0)
-      predicted_class = np.argmax(preds)
-      confidence = np.max(preds)
-      return predicted_class, confidence
-board = Sudoku_board()
-"""
-@app.get("/")
-def read_root():
-    return {"message": "Hello from FastAPI"}
+        return newBoard;
+      });
 
-#curl -X POST "http://127.0.0.1:8000/predict" -F "file=@C:/Users/almog/Downloads/CAVEMAN.png"
-"""
-@app.post("/predict")
-async def upload_file(file: UploadFile = File(...)):
-    contents = await file.read()
+      return prev.slice(0, -1);
+    });
+  };
 
-    nparr = np.frombuffer(contents, np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    if img is None:
-        return {"error": "Could not decode image"}
+  const image = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      quality: 1,
+    });
 
-    h, w, c = img.shape
-    arr_board = board.label_board(img)
-    for i in range(9):
-        print("[", end='')
-        for j in range(9):
-            print(arr_board[i*9+j], end=', ')
-        print("]")
-    return {"filename": file.filename, "shape": [h, w, c], "board": arr_board}
-"""
-@app.post("/hello")
-def hello():
-    arr = [[0]*9 for _ in range(9)]
-    arr[1][2]=3
-    print(arr)
-    return {"message" : "hello world", "arr": arr}
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    } else {
+      alert("You did not select any image");
+    }
+
+    const new_url = API_URL + "/hello";
+    console.log(new_url);
+    try {
+      const response = await fetch(new_url, { method: "POST" });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Request failed: ${response.status} - ${errorText}`);
+      }
+      const data = await response.json();
+      console.log(data.arr);
+      setBoard((prev) => {
+        const prevBoard = prev.map((r) => [...r]);
+        setHistory((h) => [...h, { type: "image", prevBoard }]);
+        return data.arr;
+      });
+      console.log("board:", board);
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const isBoardEmpty = board.every((row) => row.every((cell) => cell === 0));
+
+  const clearBoard = () => {
+    setBoard((prev) => {
+      const prevBoard = prev.map((r) => [...r]);
+      const emptyBoard = Array(9)
+        .fill(null)
+        .map(() => Array(9).fill(0));
+
+      setHistory((h) => [...h, { type: "clear", prevBoard }]);
+
+      return emptyBoard;
+    });
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Sudoku</Text>
+
+      {board.map((row, rowIndex) => (
+        <View key={rowIndex} style={styles.row}>
+          {row.map((cell, colIndex) => {
+            const isActive =
+              activeCell?.row === rowIndex && activeCell?.col === colIndex;
+
+            return (
+              <View
+                key={colIndex}
+                style={[
+                  styles.cell,
+                  (colIndex + 1) % 3 === 0 && colIndex !== 8
+                    ? styles.verticalBorder
+                    : {},
+                  (rowIndex + 1) % 3 === 0 && rowIndex !== 8
+                    ? styles.horizontalBorder
+                    : {},
+                  isActive ? styles.activeCell : {},
+                ]}
+              >
+                <TextInput
+                  style={styles.cellText}
+                  keyboardType="numeric"
+                  maxLength={1}
+                  returnKeyType="done"
+                  value={cell === 0 ? "" : String(cell)}
+                  onChangeText={(text) => handleChange(text, rowIndex, colIndex)}
+                  textAlign="center"
+                  onFocus={() => setActiveCell({ row: rowIndex, col: colIndex })}
+                  onBlur={() => setActiveCell(null)}
+                />
+              </View>
+            );
+          })}
+        </View>
+      ))}
+
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={[styles.actionButton, history.length === 0 && { opacity: 0.5 }]}
+          onPress={undo}
+          disabled={history.length === 0}
+        >
+          <Text style={styles.buttonText}>Undo</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionButton, isBoardEmpty && { opacity: 0.5 }]}
+          onPress={clearBoard}
+          disabled={isBoardEmpty}
+        >
+          <Text style={styles.buttonText}>Clear</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View>
+        <Button title="Press me" onPress={image} />
+        {imageUri && (
+          <Image source={{ uri: imageUri }} style={{ width: 200, height: 200 }} />
+        )}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: 120,
+    alignItems: "center",
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "orange",
+  },
+  row: {
+    flexDirection: "row",
+  },
+  cell: {
+    width: 40,
+    height: 40,
+    borderWidth: 1,
+    borderColor: "green",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cellText: {
+    fontSize: 32,
+    fontWeight: "bold",
+    padding: 0,
+    color: "blue",
+  },
+  verticalBorder: {
+    borderRightWidth: 3,
+  },
+  horizontalBorder: {
+    borderBottomWidth: 3,
+  },
+  activeCell: {
+    backgroundColor: "#ddd",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    marginTop: 20,
+    gap: 15,
+  },
+  actionButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: "#444",
+    borderRadius: 5,
+  },
+  buttonText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+  imagebutton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+});
