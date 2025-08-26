@@ -1,4 +1,5 @@
 
+
 #venv\Scripts\activate.bat
 #loop back:
 # uvicorn main:app --reload/ python -m uvicorn main:app --reload
@@ -6,11 +7,14 @@
 #pc IP:
 #uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-#import tensorflow as tf # pip install tensorflow
-#import cv2 #pip install opencv-python
-#import numpy as np #pip install numpy
-from fastapi import FastAPI, File, UploadFile
+import tensorflow as tf # pip install tensorflow
+import cv2 #pip install opencv-python
+import numpy as np #pip install numpy
+import subprocess
+
+from fastapi import FastAPI, File, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import socket
 
 app = FastAPI()
@@ -38,7 +42,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-"""
+
 class Sudoku_board:
   def __init__(self) -> None:
       self.model = tf.keras.models.load_model('C:/Users/almog/Downloads/model_underfit_3.keras')
@@ -54,14 +58,14 @@ class Sudoku_board:
       #plt.imshow(self.wraped_sudoku)
       #plt.show()
       cells = self.split_cells(self.wraped_sudoku)
-      self.arr = [0] * 81
+      self.arr = [[0] * 9 for _ in range(9)]
       for i in range(9):
             #plt.figure(figsize=(8, 2))
             for j in range(9):
             #    plt.subplot(1, 9, j + 1)
             #    plt.imshow(cells[i*9+j], cmap='gray')
                   digit,conf = self.predict_digit(cells[i*9+j])
-                  self.arr[i*9+j] = digit
+                  self.arr[i][j] = digit
             #    plt.title(f"{digit}\n{conf:.3f}")
             #    plt.axis('off')
             #plt.tight_layout()
@@ -132,13 +136,16 @@ class Sudoku_board:
       confidence = np.max(preds)
       return predicted_class, confidence
 board = Sudoku_board()
-"""
+
 @app.get("/")
 def read_root():
     return {"message": "Hello from FastAPI"}
 
 #curl -X POST "http://127.0.0.1:8000/predict" -F "file=@C:/Users/almog/Downloads/CAVEMAN.png"
-"""
+
+#image is encoded with base64
+
+
 @app.post("/predict")
 async def upload_file(file: UploadFile = File(...)):
     contents = await file.read()
@@ -146,20 +153,56 @@ async def upload_file(file: UploadFile = File(...)):
     nparr = np.frombuffer(contents, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     if img is None:
+        print("error")
         return {"error": "Could not decode image"}
-
+    print("got image")
     h, w, c = img.shape
     arr_board = board.label_board(img)
     for i in range(9):
         print("[", end='')
         for j in range(9):
-            print(arr_board[i*9+j], end=', ')
+            print(arr_board[i][j], end=', ')
         print("]")
-    return {"filename": file.filename, "shape": [h, w, c], "board": arr_board}
-"""
+    board_list = np.array(arr_board, dtype=np.int64)
+    print("sending back the file")
+    return {"filename": file.filename, "shape": [h, w, c], "board_list": board_list.tolist()}
+
+class BoardString(BaseModel):#validate(JSON has board key), ensure board is a string, later use(difficulty level and user ID)
+    board:str
+
+@app.post("/solve")
+#def solve_sudoku(data: BoardString):
+async def solve_sudoku(request: Request):
+    body_bytes = await request.body()           # raw bytes
+    body_text = body_bytes.decode()             # convert to string
+    print("Raw body:", body_text)
+    board_str = body_text.strip()
+    print(board_str)
+    if len(board_str) != 81 or not board_str.isdigit():
+        return {"error": "Board must be 81 digits long."}
+    try:
+        print("trying")
+        result = subprocess.run(
+            ["./solver"],               # your compiled C solver
+            input=board_str,   # pass board as bytes
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            return {"error": result.stderr.strip()}
+
+        output = result.stdout.strip()
+        print(output)
+        solved_board = [[0]*9 for _ in range(9)]
+        solved_board = [[(output[i*9 + j]) for j in range(9)] for i in range(9)]
+        return {"solved": solved_board}
+
+    except Exception as e:
+        return {"error": str(e)}
+
 @app.post("/hello")
 def hello():
     arr = [[0]*9 for _ in range(9)]
     arr[1][2]=3
-    print(arr)
+    #print(arr)
     return {"message" : "hello world", "arr": arr}
