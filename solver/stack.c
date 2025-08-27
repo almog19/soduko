@@ -42,4 +42,5 @@ int stack_size(Stack* stack){
 void stack_free(Stack* stack){
     free(stack->items);
     free(stack);
+
 }
