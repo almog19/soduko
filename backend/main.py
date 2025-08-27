@@ -45,7 +45,7 @@ app.add_middleware(
 
 class Sudoku_board:
   def __init__(self) -> None:
-      self.model = tf.keras.models.load_model('C:/Users/almog/Downloads/model_underfit_3.keras')
+      self.model = tf.keras.models.load_model('model_underfit_3.keras')
 
   def label_board(self, img_path: str):
       img, thresh = self.preprocess_image(img_path)
@@ -207,3 +207,4 @@ def hello():
     #print(arr)
     return {"message" : "hello world", "arr": arr}
                     
+
