@@ -13,6 +13,7 @@ import torch.nn.functional as F
 import cv2
 import numpy as np
 import subprocess
+import os
 
 from fastapi import FastAPI, File, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,7 +27,7 @@ app = FastAPI()
 #react dev - localhost(:3000)
 #fastAPI backend - loopback(:8000)
 #without CORS - block request from one origin for security
-
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 local_ip = socket.gethostbyname(socket.gethostname())
 print("local_ip", local_ip)
 
@@ -83,7 +84,7 @@ class Sudoku_board:
   def __init__(self) -> None:
       self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
       self.model = CNNModel().to(self.device)
-      self.model.load_state_dict(torch.load("./synthetic_sudokumodel_weights.pth", map_location=self.device))
+      self.model.load_state_dict(torch.load(BASE_DIR,"/synthetic_sudokumodel_weights.pth", map_location=self.device))
       self.model.eval()
 
   def label_board(self, img_path: str):
@@ -248,6 +249,7 @@ def hello():
     #print(arr)
     return {"message" : "hello world", "arr": arr}
                     
+
 
 
 
