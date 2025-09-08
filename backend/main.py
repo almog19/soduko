@@ -42,10 +42,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-"""
 class Sudoku_board:
   def __init__(self) -> None:
-      self.model = tf.keras.models.load_model('model_underfit_3.keras')
+      self.model = tf.keras.models.load_model('model.keras')
 
   def label_board(self, img_path: str):
       img, thresh = self.preprocess_image(img_path)
@@ -136,7 +135,6 @@ class Sudoku_board:
       confidence = np.max(preds)
       return predicted_class, confidence
 board = Sudoku_board()
-"""
 @app.get("/")
 def read_root():
     return {"message": "Hello from FastAPI"}
@@ -144,7 +142,6 @@ def read_root():
 #curl -X POST "http://127.0.0.1:8000/predict" -F "file=@C:/Users/almog/Downloads/CAVEMAN.png"
 
 #image is encoded with base64
-"""
 
 @app.post("/predict")
 async def upload_file(file: UploadFile = File(...)):
@@ -199,7 +196,7 @@ async def solve_sudoku(request: Request):
 
     except Exception as e:
         return {"error": str(e)}
-"""
+
 @app.post("/hello")
 def hello():
     arr = [[0]*9 for _ in range(9)]
@@ -207,6 +204,7 @@ def hello():
     #print(arr)
     return {"message" : "hello world", "arr": arr}
                     
+
 
 
 
