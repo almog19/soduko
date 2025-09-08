@@ -42,7 +42,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+"""
 class Sudoku_board:
   def __init__(self) -> None:
       self.model = tf.keras.models.load_model('model_underfit_3.keras')
@@ -199,7 +199,7 @@ async def solve_sudoku(request: Request):
 
     except Exception as e:
         return {"error": str(e)}
-
+"""
 @app.post("/hello")
 def hello():
     arr = [[0]*9 for _ in range(9)]
@@ -207,4 +207,5 @@ def hello():
     #print(arr)
     return {"message" : "hello world", "arr": arr}
                     
+
 
