@@ -136,7 +136,7 @@ class Sudoku_board:
       confidence = np.max(preds)
       return predicted_class, confidence
 board = Sudoku_board()
-
+"""
 @app.get("/")
 def read_root():
     return {"message": "Hello from FastAPI"}
@@ -144,7 +144,7 @@ def read_root():
 #curl -X POST "http://127.0.0.1:8000/predict" -F "file=@C:/Users/almog/Downloads/CAVEMAN.png"
 
 #image is encoded with base64
-
+"""
 
 @app.post("/predict")
 async def upload_file(file: UploadFile = File(...)):
@@ -207,5 +207,6 @@ def hello():
     #print(arr)
     return {"message" : "hello world", "arr": arr}
                     
+
 
 
