@@ -7,9 +7,11 @@
 #pc IP:
 #uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-import tensorflow as tf # pip install tensorflow
-import cv2 #pip install opencv-python
-import numpy as np #pip install numpy
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import cv2
+import numpy as np
 import subprocess
 
 from fastapi import FastAPI, File, UploadFile, Request
@@ -42,9 +44,47 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---------------- pytorch model ----------------
+
+class CNNModel(nn.Module):
+    def __init__(self):
+        super(CNNModel, self).__init__()
+
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding=1)
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.conv3 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.fc1 = nn.Linear(8*8*256, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 64)
+        self.dropout = nn.Dropout(0.5)
+        self.fc4 = nn.Linear(64, 10)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x)); x = self.pool1(x)
+        x = F.relu(self.conv2(x)); x = self.pool2(x)
+        x = F.relu(self.conv3(x)); x = self.pool3(x)
+        x = x.view(x.size(0), -1)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = self.dropout(x)
+        return self.fc4(x)
+
+# ---------------- sudoku Setup ----------------
+
 class Sudoku_board:
   def __init__(self) -> None:
-      self.model = tf.keras.models.load_model('model.keras')
+      self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+      self.model = CNNModel().to(self.device)
+      self.model.load_state_dict(torch.load("synthetic_sudokumodel_weights.pth", map_location=self.device))
+      self.model.eval()
 
   def label_board(self, img_path: str):
       img, thresh = self.preprocess_image(img_path)
@@ -121,19 +161,23 @@ class Sudoku_board:
       std_dev = np.std(cell)
       return std_dev < threshold
 
-  def preprocess_cell(self,cell):
-      cell = cv2.cvtColor(cell, cv2.COLOR_BGR2RGB)
-      cell = cv2.resize(cell, (64, 64))                      # Resize to match input shape
-      cell = cell.astype(np.float32) / 255.0
-      cell = np.expand_dims(cell, axis=0)                    # Add batch dimension
-      return cell
+  def preprocess_cell(self, cell):
+        cell = cv2.cvtColor(cell, cv2.COLOR_BGR2RGB)
+        cell = cv2.resize(cell, (64, 64))
+        cell = cell.astype(np.float32) / 255.0
+        cell = np.transpose(cell, (2, 0, 1))     # HWC -> CHW
+        tensor = torch.from_numpy(cell).unsqueeze(0).to(self.device)  # [1,3,64,64]
+        return tensor
 
   def predict_digit(self,cell):
-      img = self.preprocess_cell(cell)
-      preds = self.model.predict(img,verbose=0)
-      predicted_class = np.argmax(preds)
-      confidence = np.max(preds)
-      return predicted_class, confidence
+        img_tensor = self.preprocess_cell(cell)
+        with torch.no_grad():
+            outputs = self.model(img_tensor)
+            probs = F.softmax(outputs, dim=1).cpu().numpy()[0]
+        predicted_class = np.argmax(probs)
+        confidence = float(np.max(probs))
+        return predicted_class, confidence
+      
 board = Sudoku_board()
 @app.get("/")
 def read_root():
@@ -204,6 +248,7 @@ def hello():
     #print(arr)
     return {"message" : "hello world", "arr": arr}
                     
+
 
 
 
