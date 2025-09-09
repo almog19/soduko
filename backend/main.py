@@ -85,7 +85,7 @@ class Sudoku_board:
   def __init__(self) -> None:
       self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
       self.model = CNNModel().to(self.device)
-      self.model.load_state_dict(torch.load(BASE_DIR,"/backend/synthetic_sudokumodel_weights.pth", map_location=self.device))
+      self.model.load_state_dict(torch.load(MODEL_PATH, map_location=self.device))
       self.model.eval()
 
   def label_board(self, img_path: str):
@@ -250,6 +250,7 @@ def hello():
     #print(arr)
     return {"message" : "hello world", "arr": arr}
                     
+
 
 
 
