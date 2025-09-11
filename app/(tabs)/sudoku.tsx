@@ -4,7 +4,8 @@ import { View, Text,  TextInput, TouchableOpacity, Image, StyleSheet, Button, An
 import * as ImagePicker from "expo-image-picker";
 //import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL = "http://192.168.1.155:8000";
+//const API_URL = "http://192.168.1.155:8000";
+const API_URL = "https://soduko-onta.onrender.com";
 
 // Types
 type Cell = {
@@ -408,3 +409,4 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 });
+
