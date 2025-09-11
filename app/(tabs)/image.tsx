@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { View, Button, Text, StyleSheet } from "react-native";
 
-const API_URL = "http://192.168.1.155:8000";
+//const API_URL = "http://192.168.1.155:8000";
+const API_URL = "https://soduko-onta.onrender.com";
+
 
 const HelloButton: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
@@ -58,3 +60,4 @@ const styles = StyleSheet.create({
 });
 
 export default HelloButton;
+
