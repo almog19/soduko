@@ -29,6 +29,8 @@ app = FastAPI()
 #without CORS - block request from one origin for security
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR,"synthetic_sudokumodel_weights_fix.pth")
+SOLVE_FILE = os.path.join(BASE_DIR,"solve")
+
 local_ip = socket.gethostbyname(socket.gethostname())
 print("local_ip", local_ip)
 
@@ -226,7 +228,7 @@ async def solve_sudoku(request: Request):
     try:
         print("trying")
         result = subprocess.run(
-            ["./solver"],               # your compiled C solver
+            [SOLVE_FILE],               # your compiled C solver
             input=board_str,   # pass board as bytes
             capture_output=True,
             text=True
@@ -250,6 +252,7 @@ def hello():
     #print(arr)
     return {"message" : "hello world", "arr": arr}
                     
+
 
 
 
