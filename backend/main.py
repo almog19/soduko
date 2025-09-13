@@ -29,7 +29,7 @@ app = FastAPI()
 #without CORS - block request from one origin for security
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR,"synthetic_sudokumodel_weights_fix.pth")
-SOLVE_FILE = os.path.join(BASE_DIR,"solve")
+SOLVE_FILE = os.path.join(BASE_DIR,"solve_2")
 
 local_ip = socket.gethostbyname(socket.gethostname())
 print("local_ip", local_ip)
@@ -245,6 +245,7 @@ def hello():
     #print(arr)
     return {"message" : "hello world", "arr": arr}
                     
+
 
 
 
